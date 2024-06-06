@@ -137,7 +137,8 @@ contract Ownable is Context{
 contract DNRSale is Ownable{
     
     address public DNRToken;
-    uint256 public price = 7*1e16; //0.07 usdt 
+    uint256 public price = 7*1e16; // 0.07 usdt 
+    uint256 public maticPrice = 72*1e16; // 0.72 usdt
     uint256 public phase = 1;
     bool saleActive=false; 
     uint256 public totalInvestmentUSDT = 0;
@@ -173,10 +174,30 @@ contract DNRSale is Ownable{
     function removeinfluencerAffiliate(address add) public onlyOwner{
         influencerAffiliate[add] = false;
     }
+
+    // function updatePrice(uint256 newPrice) public onlyOwner{
+    //     price = newPrice;
+    // }
+
+    function updateMaticPrice(uint256 newPrice) public onlyOwner{
+        maticPrice = newPrice;
+    }
+
+    function getTokenCurrentPrice() public view returns(uint256){
+        if(tokenSold < 2000000*1e18){
+            return 7*1e16;
+        }
+        else if(tokenSold > 2000000*1e18 && tokenSold < 6000000*1e18){
+            return 75*1e15;
+        }
+        else {
+            return 75*1e15;
+        }
+    }
     
-    // fallback() external  {
-    //     revert();
-    // }  
+    fallback() external  {
+        revert();
+    }  
 
      function referral(address ref , uint256 amount , uint256 payMode) internal{
         uint256 comm;
@@ -197,7 +218,8 @@ contract DNRSale is Ownable{
             }
             else{
                 affiliateEarningMatic[ref] = affiliateEarningMatic[ref] + comm;
-                ref.transfer(comm);
+                address payable refAdd = address(uint160(owner()));
+                refAdd.transfer(comm);
             }
             //uint256 reff1 = SafeMath.div(amount,33); // ~3 percent
             //refferedEarning[ref] = refferedEarning[ref] + reff1;
@@ -207,59 +229,48 @@ contract DNRSale is Ownable{
 
      }
 
-     function updatePrice(uint256 newPrice)public onlyOwner{
-        price = newPrice;
-     }
-
-    function tokenPrice() public returns(uint256){
-        if(tokenSold < 2000000){
-            return 7*1e16;
-        }
-        else if(tokenSold > 2000000){
-            return 75*1e15;
-        }
-        else {
-            return 75*1e15;
-        }
-    }
+  
 
     function purchaseTokensWithUSDT(address affi, uint256 amount) public {
-        require(saleActive == true,"Sale not active!");  
+        require(saleActive == true,"Sale not active!"); 
+        usdt.transferFrom(msg.sender,owner(),amount);
+
         if(affi != address(0)){
             referral(affi,amount,1);
         }
 
-        price = tokenPrice();
+        price = getTokenCurrentPrice();
 
         uint256 usdToTokens = SafeMath.mul(price, amount);
-        uint256 tokenAmount = SafeMath.div(usdToTokens,1e18);
-        // if(coinType == 1){
-        //     busd.transferFrom(msg.sender, owner(), amount);
-        //     busdInvestment[msg.sender] = busdInvestment[msg.sender] + amount ;
-        // }
-        // else if(coinType == 2){
-        //     usdt.transferFrom(msg.sender, owner(), amount);
-        //     usdtInvestment[msg.sender] = usdtInvestment[msg.sender] + amount ;
-        // }
-        // else{
-        //     usdc.transferFrom(msg.sender, owner(), amount);
-        //     usdcInvestment[msg.sender] = usdcInvestment[msg.sender] + amount ;
-        // }           
-        // user[msg.sender].lockedAmount = user[msg.sender].lockedAmount + tokenAmount;
-        // user[msg.sender].nextClaimTime = 1672570800;//1st jan 2023 12:00:00
-        // user[msg.sender].nextClaimAmount = SafeMath.div(user[msg.sender].lockedAmount,6);
-        // totalInvestment = totalInvestment + amount;
-        // //require(totalInvestment <= hardCap, "Trying to cross Hardcap!"); 
+        uint256 tokenAmountDecimalFixed = SafeMath.div(usdToTokens,1e6);
+
+        dnr.transfer(msg.sender,tokenAmountDecimalFixed);
+
+        usdtInvestment[msg.sender] = usdtInvestment[msg.sender] + amount;
+        tokenSold = tokenSold + tokenAmountDecimalFixed;        
+      
 
     }
 
     function purchaseWithMatic(address affi) payable public{
+        require(msg.value > 0,"Enter some valid amount!");
         require(saleActive == true,"Sale not active!");  
         if(affi != address(0)){
             referral(affi,msg.value,2);
         }
 
-        price = tokenPrice();
+        
+        uint256 fixedForCalc = SafeMath.mul(msg.value,1e18);   
+        uint256 maticToUsd = SafeMath.div(fixedForCalc,maticPrice);          
+
+        price = getTokenCurrentPrice();
+        uint256 usdToTokens = SafeMath.mul(price, maticToUsd);
+        uint256 tokenAmountDecimalFixed = SafeMath.div(usdToTokens,1e18);
+
+        dnr.transfer(msg.sender,tokenAmountDecimalFixed);
+
+        maticInvestment[msg.sender] = maticInvestment[msg.sender] + msg.value;
+        tokenSold = tokenSold + tokenAmountDecimalFixed; 
 
     }
     
@@ -302,7 +313,7 @@ contract DNRSale is Ownable{
         return price;
     }
     
-    function investments(address add) external view returns (uint256,uint256,uint256){
+    function investments(address add) external view returns (uint256,uint256){
         return (maticInvestment[add], usdtInvestment[add]);
     }
 }
