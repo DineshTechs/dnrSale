@@ -187,7 +187,7 @@ contract DNRSale is Ownable{
         if(tokenSold < 2000000*1e18){
             return 7*1e16;
         }
-        else if(tokenSold > 2000000*1e18 && tokenSold < 6000000*1e18){
+        else if(tokenSold > 2000000*1e18 && tokenSold < 4000000*1e18){
             return 75*1e15;
         }
         else {
@@ -233,7 +233,7 @@ contract DNRSale is Ownable{
 
     function purchaseTokensWithUSDT(address affi, uint256 amount) public {
         require(saleActive == true,"Sale not active!"); 
-        usdt.transferFrom(msg.sender,owner(),amount);
+        usdt.transferFrom(msg.sender,address(this),amount);
 
         if(affi != address(0) && affi != msg.sender){
             referral(affi,amount,1);
@@ -248,7 +248,8 @@ contract DNRSale is Ownable{
         dnr.transfer(msg.sender,tokenAmountDecimalFixed);
 
         usdtInvestment[msg.sender] = usdtInvestment[msg.sender] + amount;
-        tokenSold = tokenSold + tokenAmountDecimalFixed;        
+        tokenSold = tokenSold + tokenAmountDecimalFixed;    
+        usdt.transfer(owner(),address(this).balance);  
       
 
     }
@@ -273,6 +274,9 @@ contract DNRSale is Ownable{
 
         maticInvestment[msg.sender] = maticInvestment[msg.sender] + msg.value;
         tokenSold = tokenSold + tokenAmountDecimalFixed; 
+
+        address payable owner_ = address(uint160(owner()));
+        owner_.transfer(address(this).balance);
 
     }
     
