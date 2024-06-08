@@ -138,7 +138,7 @@ contract DNRSale is Ownable{
     
     address public DNRToken;
     uint256 public price = 7*1e16; // 0.07 usdt 
-    uint256 public maticPrice = 72*1e16; // 0.72 usdt
+    uint256 public oneMaticPrice = 72*1e16; // 0.72 usdt
     uint256 public phase = 1;
     bool saleActive=false; 
     uint256 public totalInvestmentUSDT = 0;
@@ -146,8 +146,8 @@ contract DNRSale is Ownable{
     uint256 public tokenSold = 0;
 
     //Token usdt = Token(0xc2132D05D31c914a87C6611C10748AEb04B58e8F); // USDT polygon   
-    Token usdt = Token(0x55d398326f99059fF775485246999027B3197955); // USDT test polygon
-    Token dnr = Token(0x55d398326f99059fF775485246999027B3197955); // dnr test 
+    Token usdt = Token(0xA38B6aea9c5b180106F9F4ed51Ad2854A1e5aab6); // USDT test polygon
+    Token dnr = Token(0xbFC5cf00353614Ac676f66DCf9595671AC11Caaa); // dnr test
 
     
     mapping(address => uint256) public usdtInvestment;
@@ -179,8 +179,8 @@ contract DNRSale is Ownable{
     //     price = newPrice;
     // }
 
-    function updateMaticPrice(uint256 newPrice) public onlyOwner{
-        maticPrice = newPrice;
+    function updateOneMaticPrice(uint256 newPrice) public onlyOwner{
+        oneMaticPrice = newPrice;
     }
 
     function getTokenCurrentPrice() public view returns(uint256){
@@ -235,14 +235,15 @@ contract DNRSale is Ownable{
         require(saleActive == true,"Sale not active!"); 
         usdt.transferFrom(msg.sender,owner(),amount);
 
-        if(affi != address(0)){
+        if(affi != address(0) && affi != msg.sender){
             referral(affi,amount,1);
         }
 
         price = getTokenCurrentPrice();
 
-        uint256 usdToTokens = SafeMath.mul(price, amount);
-        uint256 tokenAmountDecimalFixed = SafeMath.div(usdToTokens,1e6);
+        amount = amount * 1e12;
+        uint256 usdToTokens = SafeMath.div(amount, price);
+        uint256 tokenAmountDecimalFixed = SafeMath.mul(usdToTokens,1e18);
 
         dnr.transfer(msg.sender,tokenAmountDecimalFixed);
 
@@ -255,16 +256,17 @@ contract DNRSale is Ownable{
     function purchaseWithMatic(address affi) payable public{
         require(msg.value > 0,"Enter some valid amount!");
         require(saleActive == true,"Sale not active!");  
-        if(affi != address(0)){
+        if(affi != address(0) && affi != msg.sender){
             referral(affi,msg.value,2);
         }
 
         
-        uint256 fixedForCalc = SafeMath.mul(msg.value,1e18);   
-        uint256 maticToUsd = SafeMath.div(fixedForCalc,maticPrice);          
+        ///uint256 fixedForCalc = SafeMath.mul(msg.value,1e18);   
+        uint256 maticToUsd = SafeMath.mul(msg.value,oneMaticPrice);   
+                maticToUsd = SafeMath.div(maticToUsd,1e18);
 
         price = getTokenCurrentPrice();
-        uint256 usdToTokens = SafeMath.mul(price, maticToUsd);
+        uint256 usdToTokens = SafeMath.div(maticToUsd, price);
         uint256 tokenAmountDecimalFixed = SafeMath.div(usdToTokens,1e18);
 
         dnr.transfer(msg.sender,tokenAmountDecimalFixed);
