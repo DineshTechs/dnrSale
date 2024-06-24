@@ -138,16 +138,15 @@ contract DNRSale is Ownable{
     
     address public DNRToken;
     uint256 public price = 7*1e16; // 0.07 usdt 
-    uint256 public oneMaticPrice = 72*1e16; // 0.72 usdt
+    uint256 public oneMaticPrice = 65*1e16; // 0.65 usdt
     uint256 public phase = 1;
-    bool saleActive=false; 
+    bool saleActive=true; 
     uint256 public totalInvestmentUSDT = 0;
     uint256 public totalInvestmentMatic = 0;
     uint256 public tokenSold = 0;
 
-    //Token usdt = Token(0xc2132D05D31c914a87C6611C10748AEb04B58e8F); // USDT polygon   
-    Token usdt = Token(0xA38B6aea9c5b180106F9F4ed51Ad2854A1e5aab6); // USDT test polygon
-    Token dnr = Token(0xbFC5cf00353614Ac676f66DCf9595671AC11Caaa); // dnr test
+    Token usdt = Token(0xc2132D05D31c914a87C6611C10748AEb04B58e8F); // USDT test polygon
+    Token dnr = Token(0x8a6ad635B6763C95299C4bc5E817F5c3d81947B4); // dnr test
 
     
     mapping(address => uint256) public usdtInvestment;
@@ -218,7 +217,7 @@ contract DNRSale is Ownable{
             }
             else{
                 affiliateEarningMatic[ref] = affiliateEarningMatic[ref] + comm;
-                address payable refAdd = address(uint160(owner()));
+                address payable refAdd = address(uint160(ref));
                 refAdd.transfer(comm);
             }
             //uint256 reff1 = SafeMath.div(amount,33); // ~3 percent
@@ -234,6 +233,7 @@ contract DNRSale is Ownable{
     function purchaseTokensWithUSDT(address affi, uint256 amount) public {
         require(saleActive == true,"Sale not active!"); 
         usdt.transferFrom(msg.sender,address(this),amount);
+        usdtInvestment[msg.sender] = usdtInvestment[msg.sender] + amount;
 
         if(affi != address(0) && affi != msg.sender){
             referral(affi,amount,1);
@@ -241,15 +241,16 @@ contract DNRSale is Ownable{
 
         price = getTokenCurrentPrice();
 
-        amount = amount * 1e12;
+        amount = amount * 1e18;
         uint256 usdToTokens = SafeMath.div(amount, price);
-        uint256 tokenAmountDecimalFixed = SafeMath.mul(usdToTokens,1e18);
+        uint256 tokenAmountDecimalFixed = SafeMath.mul(usdToTokens,1e12);
 
         dnr.transfer(msg.sender,tokenAmountDecimalFixed);
 
-        usdtInvestment[msg.sender] = usdtInvestment[msg.sender] + amount;
+       
         tokenSold = tokenSold + tokenAmountDecimalFixed;    
-        usdt.transfer(owner(),address(this).balance);  
+        //usdt.transfer(owner(),dnr.balanceOf(address(this));  
+        forwardFunds();
       
 
     }
@@ -264,16 +265,16 @@ contract DNRSale is Ownable{
         
         ///uint256 fixedForCalc = SafeMath.mul(msg.value,1e18);   
         uint256 maticToUsd = SafeMath.mul(msg.value,oneMaticPrice);   
-                maticToUsd = SafeMath.div(maticToUsd,1e18);
+                //maticToUsd = SafeMath.div(maticToUsd,1e18);
 
         price = getTokenCurrentPrice();
         uint256 usdToTokens = SafeMath.div(maticToUsd, price);
-        uint256 tokenAmountDecimalFixed = SafeMath.div(usdToTokens,1e18);
+        //uint256 tokenAmountDecimalFixed = SafeMath.mul(usdToTokens,1e18);
 
-        dnr.transfer(msg.sender,tokenAmountDecimalFixed);
+        dnr.transfer(msg.sender,usdToTokens);
 
         maticInvestment[msg.sender] = maticInvestment[msg.sender] + msg.value;
-        tokenSold = tokenSold + tokenAmountDecimalFixed; 
+        tokenSold = tokenSold + usdToTokens; 
 
         address payable owner_ = address(uint160(owner()));
         owner_.transfer(address(this).balance);
